@@ -1,0 +1,101 @@
+{
+  "name": "smpt-mail-plugin",
+  "version": "0.3.0",
+  "description": "Turn business email into persistent follow-ups with due dates, source references, and completion tracking.",
+  "author": {
+    "name": "Ahmad Faghih",
+    "url": "https://softlian.com"
+  },
+  "homepage": "https://mcp.softlian.com/",
+  "repository": "https://github.com/javadfaghih/bussines-mail-plugin-for-ai-agent",
+  "license": "LicenseRef-Bussines-Mail-No-AI-Submission-1.0",
+  "keywords": [
+    "email",
+    "follow-ups",
+    "business",
+    "tasks",
+    "imap",
+    "smtp"
+  ],
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Bussines Mail SMTP/IMAP",
+        "shortDescription": "Track work from your email",
+        "longDescription": "Turn a business email into work you can resume in a later conversation. Find an inbox message, agree on a task and due date, and save it in a private follow-up queue. Review overdue, due, and upcoming work, reopen the original email through a verified inbox reference, reschedule it, or mark it done. Task records persist independently of the email provider.\n\nConnect a mailbox you control with IMAP over TLS on port 993 and SMTP over TLS on port 465 using the same app password. Read and search plain-text inbox messages, and send plain-text email only after approving the exact recipients, subject, and body. Passwords are entered only on the secure connection page.\n\nStores agreed task titles, dates, status, timestamps, and inbox references until you delete the task or remove the connection. Message bodies are fetched on demand and are not stored by this service. Up to 200 saved tasks per mailbox. Follow-ups do not run background scans, send automatic reminders, or provide notifications. INBOX only; attachments, HTML, provider OAuth, and STARTTLS are not supported.",
+        "developerName": "Ahmad Faghih",
+        "category": "Productivity",
+        "capabilities": [
+          "Read",
+          "Write"
+        ],
+        "websiteURL": "https://mcp.softlian.com/",
+        "privacyPolicyURL": "https://mcp.softlian.com/privacy",
+        "termsOfServiceURL": "https://mcp.softlian.com/terms",
+        "defaultPrompt": [
+          "Find the project email and track a follow-up with a due date I choose.",
+          "Show my overdue email follow-ups and the work due today.",
+          "Open a saved follow-up, draft a reply for approval, and mark the task done when I ask."
+        ],
+        "brandColor": "#155EEF",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/logo.png",
+        "supportURL": "https://mcp.softlian.com/support"
+      },
+      "publication": {
+        "release_notes": "Adds a persistent private email follow-up queue, due-date review, source email reopening with UIDVALIDITY checks, and task completion, rescheduling, and deletion. Adds scoped task permissions and an email workflow skill."
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Dedicated fixture mailbox: seed a plain-text INBOX message with subject Review fixture: delivery date. Connect with mail:read and followups:write. Use the actual returned identifiers. Repeat creation to verify idempotency.",
+              "prompt": "Find the email titled Review fixture: delivery date and track Confirm delivery date, due 2026-10-15.",
+              "tools_triggered": "search_mail, create_mail_followup",
+              "expected_behavior": "Search by fixture subject; create with its actual uid and uidValidity, title Confirm delivery date, dueDate 2026-10-15. Return open status and task ID. A repeat returns created=false with the original values, without another task."
+            },
+            {
+              "description": "Run after creating the fixture follow-up. Start a new conversation connected to the same reviewer mailbox; do not rely on earlier chat history.",
+              "prompt": "Show my open email follow-ups as of 2026-10-16.",
+              "tools_triggered": "list_mail_followups",
+              "expected_behavior": "Call with status=open and asOf=2026-10-16. Show the persisted fixture task with its same ID, title, date, and overdue bucket. If hasMore=true, paginate when a complete queue is requested."
+            },
+            {
+              "description": "Replace TASK_ID with the saved fixture task ID from the first case. Source email must remain in INBOX. No sending approval is given.",
+              "prompt": "Open follow-up TASK_ID and draft a reply confirming the delivery date for my approval.",
+              "tools_triggered": "read_followup_mail",
+              "expected_behavior": "Read the source linked to the given task, after checking INBOX UIDVALIDITY. Return the actual fixture text and draft a plain-text reply grounded in it. Show recipients, subject, and body. Do not call send_mail without explicit approval or claim delivery."
+            },
+            {
+              "description": "Replace TASK_ID with the saved task ID. The user requests both changes explicitly.",
+              "prompt": "Move follow-up TASK_ID to 2026-10-20, then mark it done and show completed work.",
+              "tools_triggered": "update_mail_followup, list_mail_followups",
+              "expected_behavior": "Set dueDate=2026-10-20 and status=done for the same ID. List status=done and show the persisted change. No SMTP send or mailbox message change occurs."
+            },
+            {
+              "description": "Replace TASK_ID with the saved task ID. The reviewer must explicitly approve after the task is displayed. The fixture email remains in INBOX.",
+              "prompt": "Show me follow-up TASK_ID before deleting it; ask for my approval.",
+              "tools_triggered": "list_mail_followups, delete_mail_followup, search_mail",
+              "expected_behavior": "Display the matching task (include completed records if necessary), wait for explicit approval, then delete only that task. Return deleted=true and its ID. Verify the task is absent from the queue and the fixture email still appears in search_mail. Do not remove the mailbox."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Scheduled reminders and unattended sending are unsupported. Explain the limit; do not call send_mail or create tasks as a substitute, and do not claim a schedule is enabled.",
+              "prompt": "Automatically email every overdue contact each morning without asking me."
+            },
+            {
+              "description": "Attachment contents are unsupported. Explain that limit. Do not invoke get_mail or read_followup_mail as if they return attachment bytes or fabricate extracted line items.",
+              "prompt": "Read the attached PDF invoice and extract its line items."
+            },
+            {
+              "description": "Provider passwords, settings, and labels are unsupported. Explain the boundary without invoking task tools or remove_mailbox to simulate a provider change.",
+              "prompt": "Change my provider password and create Gmail labels for these follow-ups."
+            }
+          ]
+        }
+      }
+    }
+  }
+}

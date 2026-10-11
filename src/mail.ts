@@ -3,9 +3,11 @@ import type { FetchMessageObject } from "imapflow";
 import { createSmtpTransport } from "./smtp";
 import PostalMime from "postal-mime";
 import type { MailAccount } from "./env";
+import { FollowupError } from "./followups";
 
 export interface MailSummary {
   uid: number;
+  uidValidity: string;
   subject: string | null;
   from: string[];
   date: string | null;
@@ -16,14 +18,24 @@ function addressList(addresses: Array<{ address?: string } | null> | undefined):
   return (addresses ?? []).map((address) => address?.address ?? "").filter(Boolean);
 }
 
-function summarize(message: FetchMessageObject): MailSummary {
+function summarize(message: FetchMessageObject, uidValidity: string): MailSummary {
   return {
     uid: message.uid,
+    uidValidity,
     subject: message.envelope?.subject ?? null,
     from: addressList(message.envelope?.from),
     date: message.envelope?.date ? new Date(message.envelope.date).toISOString() : null,
     seen: message.flags?.has("\\Seen") ?? false,
   };
+}
+
+function inboxValidity(client: ImapFlow, expected?: string): string {
+  const validity = client.mailbox && client.mailbox.uidValidity?.toString();
+  if (!validity) throw new FollowupError("Inbox identity unavailable. Try again after reconnecting.");
+  if (expected !== undefined && validity !== expected) {
+    throw new FollowupError("The inbox identity changed. Search the inbox again; this saved reference must not be used to read a different message.");
+  }
+  return validity;
 }
 
 async function withInbox<T>(account: MailAccount, password: string, operation: (client: ImapFlow) => Promise<T>): Promise<T> {
@@ -82,7 +94,7 @@ export async function listMail(account: MailAccount, password: string, limit: nu
     if (total === 0) return [];
     const start = Math.max(1, total - limit + 1);
     const messages = await client.fetchAll(`${start}:${total}`, { envelope: true, flags: true, uid: true });
-    return messages.map(summarize).reverse();
+    return messages.map((message) => summarize(message, inboxValidity(client))).reverse();
   });
 }
 
@@ -103,22 +115,31 @@ export async function searchMail(
     if (!uids || uids.length === 0) return [];
     const selected = uids.slice(-limit);
     const messages = await client.fetchAll(selected, { envelope: true, flags: true, uid: true }, { uid: true });
-    return messages.map(summarize).sort((a, b) => b.uid - a.uid);
+    return messages.map((message) => summarize(message, inboxValidity(client))).sort((a, b) => b.uid - a.uid);
   });
 }
 
-export async function getMail(account: MailAccount, password: string, uid: number) {
+export async function getMailReference(account: MailAccount, password: string, uid: number, expectedValidity: string) {
   return withInbox(account, password, async (client) => {
+    const validity = inboxValidity(client, expectedValidity);
+    const meta = await client.fetchOne(String(uid), { envelope: true, flags: true, uid: true }, { uid: true });
+    return meta ? summarize(meta, validity) : null;
+  });
+}
+
+export async function getMail(account: MailAccount, password: string, uid: number, expectedValidity?: string) {
+  return withInbox(account, password, async (client) => {
+    const validity = inboxValidity(client, expectedValidity);
     const meta = await client.fetchOne(String(uid), { size: true, envelope: true, flags: true, uid: true }, { uid: true });
     if (!meta) return null;
     if ((meta.size ?? 0) > 256_000) {
-      return { ...summarize(meta), error: "This message exceeds the 256 KB reading limit." };
+      return { ...summarize(meta, validity), error: "This message exceeds the 256 KB reading limit." };
     }
     const message = await client.fetchOne(String(uid), { source: true }, { uid: true });
     if (!message || !message.source) return null;
     const parsed = await PostalMime.parse(message.source);
     return {
-      ...summarize(meta),
+      ...summarize(meta, validity),
       to: addressList(parsed.to),
       cc: addressList(parsed.cc),
       text: parsed.text?.slice(0, 40_000) ?? "",

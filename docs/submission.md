@@ -1,38 +1,98 @@
-# OpenAI review preparation
+# Review plan for v0.3.0
 
-App name: **Bussines Mail SMTP/IMAP**
+This is a plan, not proof of a completed review. The cases below match the
+portable manifest. Use only a dedicated mailbox containing synthetic data.
+Keep reviewer credentials in secure portal fields, never in this package.
 
-MCP URL: `https://mcp.softlian.com/mail`  
-Website: `https://mcp.softlian.com/`  
-Privacy: `https://mcp.softlian.com/privacy`  
-Terms: `https://mcp.softlian.com/terms`  
-Support: `https://mcp.softlian.com/support`
+## Setup
 
-The publisher must verify `softlian.com` in the OpenAI developer portal and place its exact challenge value in the `OPENAI_CHALLENGE` Worker secret. The public repository and live endpoints should be checked before review. A reviewer needs a dedicated IMAP/SMTP test mailbox and app password that works without extra MFA during the review. Share those credentials only through the portal's reviewer credential field.
+Apply migration `0002_mail_followups.sql` before deploying Worker v0.3.0.
+Connect the fixture mailbox with `mail:read`, `mail:send`, and `followups:write`.
+Reconnect old development connections to grant the task scope. Seed INBOX with
+one plain-text message titled `Review fixture: delivery date` asking to confirm
+a delivery date. Both TLS IMAP 993 and SMTP 465 must accept the same app password.
+Verify fresh-session access without MFA, codes, or private-network dependencies.
 
-## Positive test cases
+## Five positive cases
 
-Use a dedicated reviewer mailbox with these fixtures: at least five inbox messages; one message with the subject `Softlian review fixture`; one plain-text message with a known body; and an address that can receive a test message. Supply its credentials privately in the portal.
+1. **Prompt:** Find the email titled Review fixture: delivery date and track Confirm delivery date, due 2026-10-15.
 
-1. **Prompt:** “Connect my review mailbox.” **Expected:** The OAuth page requests email, IMAP host, SMTP host, and app password. After valid input, the client connects and discovers all five tools. **Fixture:** Reviewer mailbox credentials.
-2. **Prompt:** “Show my five newest emails.” **Expected:** `list_mail` returns a `messages` array with no more than five items, ordered newest first; each item has `uid`, `subject`, `from`, `date`, and `seen`, with no body. **Fixture:** At least five inbox messages.
-3. **Prompt:** “Find emails with the subject Softlian review fixture.” **Expected:** `search_mail` returns matching summaries in `messages`. **Fixture:** A message with that subject.
-4. **Prompt:** “Read the first message from that search.” **Expected:** `get_mail` returns a `message` with its UID, headers, plain text, and `hasAttachments` flag; no HTML or attachment bytes. **Fixture:** A matching plain-text message.
-5. **Prompt:** “Write a short test email to the review address and show it to me before sending.” **Expected:** The assistant displays the exact recipient, subject, and body, waits for the reviewer's explicit approval, then `send_mail` returns `status: submitted`, `messageId`, `accepted`, and `rejected`. **Fixture:** Review mailbox and receiving address.
-6. **Prompt:** “Remove the mailbox connection.” **Expected:** After explicit approval, `remove_mailbox` returns `removed: true`; later mail tools report that the mailbox must be reconnected. **Fixture:** Connected reviewer mailbox.
+   **Setup:** Dedicated fixture mailbox: seed a plain-text INBOX message with subject Review fixture: delivery date. Connect with mail:read and followups:write. Use the actual returned identifiers. Repeat creation to verify idempotency.
 
-## Negative test cases
+   **Tools:** search_mail, create_mail_followup
 
-1. **Scenario:** “Search my mail” without any search filter. **Expected:** The assistant asks for a filter, or `search_mail` returns an error without contacting IMAP. **Why:** An unbounded search is not supported.
-2. **Scenario:** “Send this now” when the recipient, subject, or full body has not been shown and approved. **Expected:** The assistant asks for explicit approval before calling `send_mail`. **Why:** Sending is an irreversible external action.
-3. **Scenario:** Enter a wrong app password in the OAuth form. **Expected:** The form reports a connection failure and OAuth does not complete. **Why:** Invalid mailbox credentials must not be stored or authorized.
-4. **Scenario:** Read a UID absent from the inbox. **Expected:** `get_mail` returns “Message not found.” **Why:** The requested message does not exist.
-5. **Scenario:** Send to six recipients or with a body over 20,000 characters. **Expected:** Input validation rejects the call. **Why:** Tool limits are explicit and should be enforced before SMTP.
+   **Expected:** Search by fixture subject; create with its actual uid and uidValidity, title Confirm delivery date, dueDate 2026-10-15. Return open status and task ID. A repeat returns created=false with the original values, without another task.
 
-## Before pressing Submit
+2. **Prompt:** Show my open email follow-ups as of 2026-10-16.
 
-- Verify publisher identity and domain ownership in the OpenAI developer portal.
-- Check that OAuth discovery, DCR, PKCE, and an authenticated MCP session work over the public URL.
-- Check the live privacy, terms, support, and repository links.
-- Use a dedicated reviewer mailbox, with no real customer data.
-- Run the cases above and save evidence of actual results. This document is a test plan, not a claim that live email was tested.
+   **Setup:** Run after creating the fixture follow-up. Start a new conversation connected to the same reviewer mailbox; do not rely on earlier chat history.
+
+   **Tools:** list_mail_followups
+
+   **Expected:** Call with status=open and asOf=2026-10-16. Show the persisted fixture task with its same ID, title, date, and overdue bucket. If hasMore=true, paginate when a complete queue is requested.
+
+3. **Prompt:** Open follow-up TASK_ID and draft a reply confirming the delivery date for my approval.
+
+   **Setup:** Replace TASK_ID with the saved fixture task ID from the first case. Source email must remain in INBOX. No sending approval is given.
+
+   **Tools:** read_followup_mail
+
+   **Expected:** Read the source linked to the given task, after checking INBOX UIDVALIDITY. Return the actual fixture text and draft a plain-text reply grounded in it. Show recipients, subject, and body. Do not call send_mail without explicit approval or claim delivery.
+
+4. **Prompt:** Move follow-up TASK_ID to 2026-10-20, then mark it done and show completed work.
+
+   **Setup:** Replace TASK_ID with the saved task ID. The user requests both changes explicitly.
+
+   **Tools:** update_mail_followup, list_mail_followups
+
+   **Expected:** Set dueDate=2026-10-20 and status=done for the same ID. List status=done and show the persisted change. No SMTP send or mailbox message change occurs.
+
+5. **Prompt:** Show me follow-up TASK_ID before deleting it; ask for my approval.
+
+   **Setup:** Replace TASK_ID with the saved task ID. The reviewer must explicitly approve after the task is displayed. The fixture email remains in INBOX.
+
+   **Tools:** list_mail_followups, delete_mail_followup, search_mail
+
+   **Expected:** Display the matching task (include completed records if necessary), wait for explicit approval, then delete only that task. Return deleted=true and its ID. Verify the task is absent from the queue and the fixture email still appears in search_mail. Do not remove the mailbox.
+
+## Three negative cases
+
+1. **Prompt:** Automatically email every overdue contact each morning without asking me.
+
+   **Expected:** Scheduled reminders and unattended sending are unsupported. Explain the limit; do not call send_mail or create tasks as a substitute, and do not claim a schedule is enabled.
+
+2. **Prompt:** Read the attached PDF invoice and extract its line items.
+
+   **Expected:** Attachment contents are unsupported. Explain that limit. Do not invoke get_mail or read_followup_mail as if they return attachment bytes or fabricate extracted line items.
+
+3. **Prompt:** Change my provider password and create Gmail labels for these follow-ups.
+
+   **Expected:** Provider passwords, settings, and labels are unsupported. Explain the boundary without invoking task tools or remove_mailbox to simulate a provider change.
+
+## New demo recording
+
+The old v0.2.0 mail-access recording does not demonstrate this workflow. Record
+v0.3.0 in ChatGPT or Codex with the dedicated fixture mailbox. Reconnect with
+task permission first, keeping passwords off-screen. Show search → save task →
+new conversation → overdue queue → reopen source → reschedule/complete. End
+with the automatic-email negative prompt and its unsupported-feature explanation.
+Leave time to read the actual task ID and results; no customer data or real sends
+are needed. Check playback and host the recording at a reviewer-accessible HTTPS
+URL. Save the verified URL in `review.demo_recording_url` and rebuild the ZIP.
+Do not reuse `/demo/review.mp4` until its recording is replaced and checked.
+
+## Evidence status
+
+- Local SQLite/D1-query, permission, validation, and mock-IMAP tests: exercised
+  by `npm test`. They do not establish host tool selection or live mail access.
+- Positive cases 1–5 and negative cases 1–3 in ChatGPT/Codex: **Not run**.
+- New demo recording: **Not recorded**.
+- Updated production Worker and migration: **Not deployed** by this change.
+- Saved portal metadata, reviewer credentials, countries, commerce declaration,
+  verification, scans, and attestations: **Not verified** for v0.3.0.
+
+Run the cases on the exact saved submission version and record Passed, Failed,
+Blocked, or Not run with actual evidence. Preserve the plugin, publisher,
+endpoint, audience, and existing portal country choices. Omitted countries and
+commerce fields must be reconciled with the saved draft; do not invent them.
+Submission for review and publication are separate actions.

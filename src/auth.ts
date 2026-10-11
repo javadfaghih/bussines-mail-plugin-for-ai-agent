@@ -49,8 +49,13 @@ async function userIdFor(email: string, imapHost: string): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function connectPage(token: string, clientName: string, error?: string): Response {
-  return page("Connect your email", `<h1>Connect your email</h1><p>${escapeHtml(clientName)} is requesting access to read, search, and send mail through your email provider.</p><p>Enter your mailbox details here. Your app password is never sent to the AI chat.</p>${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}
+function connectPage(token: string, clientName: string, scopes: string[], error?: string): Response {
+  const permissions = [
+    ...(scopes.includes("mail:read") ? ["read and search your inbox and view saved follow-ups"] : []),
+    ...(scopes.includes("mail:send") ? ["send email with your approval"] : []),
+    ...(scopes.includes("followups:write") ? ["save, update, and delete private follow-up tasks"] : []),
+  ];
+  return page("Connect your email", `<h1>Connect your email</h1><p>${escapeHtml(clientName)} is requesting permission to ${escapeHtml(permissions.join("; "))}.</p><p>Follow-up titles, dates, status, and inbox references are saved until you delete them or remove the mailbox connection. Message bodies are not stored. Follow-ups do not send reminders automatically.</p><p>Enter your mailbox details here. Your app password is never sent to the AI chat.</p>${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}
     <form method="post" action="/authorize"><input type="hidden" name="state" value="${token}">
     <label>Email address<input name="email" type="email" autocomplete="username" required></label>
     <label>IMAP host (TLS, port 993)<input name="imap_host" placeholder="imap.example.com" required></label>
@@ -66,7 +71,7 @@ async function beginAuthorization(request: Request, env: Env): Promise<Response>
   if (!client) return new Response("Unknown MCP client", { status: 400 });
   const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, "");
   await env.OAUTH_KV.put(`state:${token}`, JSON.stringify(authRequest), { expirationTtl: 600 });
-  const response = connectPage(token, client.clientName ?? "An MCP client");
+  const response = connectPage(token, client.clientName ?? "An MCP client", authRequest.scope);
   response.headers.set("set-cookie", `${stateCookie}=${token}; Path=/; Max-Age=600; HttpOnly; Secure; SameSite=Lax`);
   return response;
 }
@@ -95,7 +100,7 @@ async function finishAuthorization(request: Request, env: Env): Promise<Response
   const smtpHost = String(form.get("smtp_host") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
   if (!validEmail(email) || !validHost(imapHost) || !validHost(smtpHost) || !password || password.length > 1024) {
-    return connectPage(token, client.clientName ?? "An MCP client", "Check the email address, hostnames, and app password.");
+    return connectPage(token, client.clientName ?? "An MCP client", authRequest.scope, "Check the email address, hostnames, and app password.");
   }
   if (!await withinAttemptLimit(request, env)) return new Response("Too many attempts. Try again later.", { status: 429 });
   const checks = await Promise.allSettled([
@@ -106,7 +111,7 @@ async function finishAuthorization(request: Request, env: Env): Promise<Response
     ? [connectionFailureMessage(index === 0 ? "IMAP" : "SMTP", result.reason)]
     : []);
   if (failures.length) {
-    return connectPage(token, client.clientName ?? "An MCP client", failures.join(" "));
+    return connectPage(token, client.clientName ?? "An MCP client", authRequest.scope, failures.join(" "));
   }
   const userId = await userIdFor(email, imapHost);
   const encrypted = await encryptPassword(password, userId, env.CREDENTIAL_KEY);
@@ -147,8 +152,8 @@ export async function handlePublic(request: Request, env: Env): Promise<Response
   }
   if (path === "/authorize" && request.method === "GET") return beginAuthorization(request, env);
   if (path === "/authorize" && request.method === "POST") return finishAuthorization(request, env);
-  if (path === "/" && request.method === "GET") return page("Bussines Mail SMTP/IMAP", "<h1>Bussines Mail SMTP/IMAP</h1><p>Use your own IMAP and SMTP mailbox in ChatGPT and Codex. Connect the plugin, then enter your email address, IMAP and SMTP hosts, and an app password on this site.</p><p>The MCP endpoint is <code>/mail</code>.</p><p>Published by Ahmad Faghih (Softlian).</p><p><a href='/privacy'>Privacy</a> · <a href='/terms'>Terms</a> · <a href='/support'>Support</a></p>");
-  if (path === "/privacy") return page("Privacy", "<h1>Privacy</h1><p>Effective September 26, 2026. Bussines Mail SMTP/IMAP is operated by Ahmad Faghih (Softlian).</p><p>We store your mailbox address, IMAP and SMTP hostnames, and an AES-GCM encrypted app password in Cloudflare D1 until you remove the connection. The encryption key is stored separately as a Cloudflare Worker secret. We use this data to authenticate with your email provider and perform the mail actions you request.</p><p>Mail headers and message content are fetched on demand, returned to your MCP client, and not saved in our database. Cloudflare processes service and connection data as our hosting provider. Your email provider processes mailbox connections and outgoing messages. Your MCP client, including OpenAI when used in ChatGPT or Codex, processes returned mail content under its own privacy policy. We do not sell this data.</p><p>OAuth grants are stored in Cloudflare KV until expiry or revocation. Authorization state expires after 10 minutes, IP-based connection attempt counters after one hour, and daily send counters after 30 days. The <code>remove_mailbox</code> tool deletes saved mailbox details, the encrypted password, and send counters. Disconnect the MCP client separately to revoke its OAuth token.</p><p>For support or a privacy request, see <a href='/support'>Support</a>. Never put a password, mailbox address, or message content in chat or a public issue.</p>");
+  if (path === "/" && request.method === "GET") return page("Bussines Mail SMTP/IMAP", "<h1>Bussines Mail SMTP/IMAP</h1><p>Turn business emails into a persistent private work queue in ChatGPT and Codex. Track a task from an inbox message, agree on a due date, review overdue work in a later conversation, reopen the source email, and mark the task complete. Follow-ups remain in this service until you delete them; they do not send automatic reminders. Connect your own IMAP and SMTP mailbox using the secure connection page.</p><p>The MCP endpoint is <code>/mail</code>.</p><p>Published by Ahmad Faghih (Softlian).</p><p><a href='/privacy'>Privacy</a> · <a href='/terms'>Terms</a> · <a href='/support'>Support</a></p>");
+  if (path === "/privacy") return page("Privacy", "<h1>Privacy</h1><p>Effective October 11, 2026. Bussines Mail SMTP/IMAP is operated by Ahmad Faghih (Softlian).</p><p>We store your mailbox address, IMAP and SMTP hostnames, and an AES-GCM encrypted app password in Cloudflare D1 until you remove the connection. The encryption key is stored separately as a Cloudflare Worker secret. We use this data to authenticate with your email provider and perform the mail actions you request.</p><p>Mail headers and message content are fetched on demand, returned to your MCP client, and not saved in our database. When you ask to track work, we separately store the task title you agree to, its due date and status, timestamps, and an INBOX UID and UIDVALIDITY reference in Cloudflare D1. Task titles may contain personal information you choose to include. These task records are kept until you delete the task or remove the mailbox connection, and are used only to provide your private work queue. There are no background email scans or automatic notifications. Cloudflare processes service and connection data as our hosting provider. Your email provider processes mailbox connections and outgoing messages. Your MCP client, including OpenAI when used in ChatGPT or Codex, processes returned mail content under its own privacy policy. We do not sell this data.</p><p>OAuth grants are stored in Cloudflare KV until expiry or revocation. Authorization state expires after 10 minutes, IP-based connection attempt counters after one hour, and daily send counters after 30 days. The <code>remove_mailbox</code> tool deletes saved mailbox details, the encrypted password, send counters, and all follow-up tasks. You can delete a single task with <code>delete_mail_followup</code>. Disconnect the MCP client separately to revoke its OAuth token.</p><p>For support or a privacy request, see <a href='/support'>Support</a>. Never put a password, mailbox address, or message content in chat or a public issue.</p>");
   if (path === "/terms") return page("Terms", "<h1>Terms</h1><p>Effective September 26, 2026. Bussines Mail SMTP/IMAP is operated by Ahmad Faghih (Softlian).</p><p>Use the service only with a mailbox you control. You are responsible for messages you choose to send and for following your email provider's rules. Spam, unlawful use, and attempts to access another person's mailbox are prohibited. The service is provided as-is without a delivery guarantee. You may disconnect your mailbox at any time using the <code>remove_mailbox</code> tool.</p><h2>Source code license</h2><p>The source code is available under the Bussines Mail Source-Available License 1.0. Cloning, learning, modification, and use are permitted subject to that license. Submitting copies, derivatives, or hosted integrations to an AI company for review, listing, or distribution requires Ahmad Faghih's separate written permission. This restriction does not prevent users from connecting their own instance to an AI client for their own use.</p><p>Read the <a href='https://github.com/javadfaghih/bussines-mail-plugin-for-ai-agent/blob/main/LICENSE'>full source code license</a>. Earlier MIT releases retain their original license.</p><p>See <a href='/privacy'>Privacy</a> and <a href='/support'>Support</a>.</p>");
   if (path === "/support") return page("Support", "<h1>Support</h1><p>For help, report a bug, or request data deletion support, open an issue in the <a href='https://github.com/javadfaghih/bussines-mail-plugin-for-ai-agent/issues'>Bussines Mail SMTP/IMAP repository</a>. Never put a mailbox address, app password, or message content in a public issue.</p>");
   return new Response("Not found", { status: 404 });
