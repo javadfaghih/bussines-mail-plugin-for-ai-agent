@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """Validate the portable source package and inspect the archive it produces."""
 import json
+import argparse
 import re
 import struct
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PLUGIN = ROOT / "plugins" / "smpt-mail-plugin"
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--plugin", default="smpt-mail-plugin", help="Plugin directory name under plugins/")
+arguments = parser.parse_args()
+PLUGIN = (ROOT / "plugins" / arguments.plugin).resolve()
+assert PLUGIN.parent == (ROOT / "plugins").resolve()
 manifest = json.loads((PLUGIN / "plugin.json").read_text())
 compatibility = json.loads((PLUGIN / ".codex-plugin/plugin.json").read_text())
 extension = manifest["extensions"]["com.openai"]
@@ -39,7 +44,15 @@ for key, minimum in (("logo", 256), ("composerIcon", 48)):
 mcp = json.loads((PLUGIN / "mcp.json").read_text())
 assert len(mcp["mcpServers"]) == 1
 server = mcp["mcpServers"][manifest["name"]]
-assert server == {"type": "streamable-http", "url": "https://mcp.softlian.com/mail"}
+assert server["type"] == "streamable-http" and server["url"] == "https://mcp.softlian.com/mail"
+auth = server.get("extensions", {}).get("com.openai", {}).get("auth")
+if auth is not None:
+    assert auth["type"] == "oauth" and auth["client"]["mode"] == "dcr"
+    assert "clientSecret" not in auth and "clientSecret" not in auth["client"]
+    assert auth["resource"] == server["url"]
+    assert auth["baseScopes"] == ["mail:read", "mail:send", "followups:write"]
+    for key in ("authorizationServerBase", "authorizationUrl", "tokenUrl", "registrationUrl"):
+        assert auth[key].startswith("https://mcp.softlian.com")
 legacy = json.loads((PLUGIN / ".mcp.json").read_text())
 assert legacy["mcpServers"][manifest["name"]]["url"] == server["url"]
 

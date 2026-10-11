@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "softlian-mail-followups": {
+      "type": "http",
+      "url": "https://mcp.softlian.com/mail",
+      "extensions": {
+        "com.openai": {
+          "auth": {
+            "type": "oauth",
+            "client": {
+              "mode": "dcr"
+            },
+            "authorizationServerBase": "https://mcp.softlian.com",
+            "authorizationUrl": "https://mcp.softlian.com/authorize",
+            "tokenUrl": "https://mcp.softlian.com/oauth/token",
+            "registrationUrl": "https://mcp.softlian.com/oauth/register",
+            "resource": "https://mcp.softlian.com/mail",
+            "baseScopes": [
+              "mail:read",
+              "mail:send",
+              "followups:write"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

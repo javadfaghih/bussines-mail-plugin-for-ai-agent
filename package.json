@@ -8,7 +8,8 @@
     "deploy": "wrangler deploy",
     "check": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs",
-    "package:plugin": "python3 scripts/package-plugin.py"
+    "package:plugin": "python3 scripts/package-plugin.py",
+    "package:followups": "python3 scripts/package-plugin.py --plugin softlian-mail-followups"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^1.1.0",

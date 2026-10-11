@@ -45,6 +45,14 @@ App passwords are encrypted with AES-256-GCM using `CREDENTIAL_KEY` before D1 st
 
 ## Publishing
 
+The new public submission is **Softlian Mail Follow-ups**, packaged separately
+under `plugins/softlian-mail-followups`. Run `npm run package:followups` to
+create its ZIP. It uses the same production mail service, with explicit OAuth
+DCR configuration and the `followups:write` scope. Its OpenAI app and package
+identity are separate from the rejected legacy submission. Current submission
+progress and remaining review materials are tracked in
+`docs/followups-submission-status.md`.
+
 The portable manifest is at `plugins/smpt-mail-plugin/plugin.json`; the synchronized compatibility manifest is at `plugins/smpt-mail-plugin/.codex-plugin/plugin.json`. The repo marketplace is at `.agents/plugins/marketplace.json`. Run `npm run package:plugin` to validate the package and create `work/smpt-mail-plugin-0.3.0.zip`. The review plan is in `docs/submission.md`, and remediation notes are in `docs/review-remediation.md`. A source archive does not prove deployment or submission readiness. Public review requires the deployed workflow, a new demo recording, verified publisher and domain, reviewer access, and actual host tests.
 
 ## License
