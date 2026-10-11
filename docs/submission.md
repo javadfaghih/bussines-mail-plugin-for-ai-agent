@@ -87,9 +87,11 @@ Do not reuse `/demo/review.mp4` until its recording is replaced and checked.
   by `npm test`. They do not establish host tool selection or live mail access.
 - Positive cases 1–5 and negative cases 1–3 in ChatGPT/Codex: **Not run**.
 - New demo recording: **Not recorded**.
-- Updated production Worker and migration: **Not deployed** by this change.
+- Updated production Worker and migration: **Deployed October 11, 2026**;
+  see `docs/release-status.md` for the deployment and independent checks.
 - Saved portal metadata, reviewer credentials, countries, commerce declaration,
-  verification, scans, and attestations: **Not verified** for v0.3.0.
+  verification, scans, and attestations: **Blocked** for v0.3.0 by the current
+  MCP configuration problem documented in `docs/release-status.md`.
 
 Run the cases on the exact saved submission version and record Passed, Failed,
 Blocked, or Not run with actual evidence. Preserve the plugin, publisher,
