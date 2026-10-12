@@ -63,9 +63,14 @@ requires comparing a named mailbox with this identity before reading mail.
 TypeScript checking and 26 automated tests passed; archive validation passed
 for seven files, eleven tools, and five positive/three negative cases.
 
+Commit `965d12a` was pushed to main. GitHub check and Cloudflare Workers Builds
+both succeeded. v0.3.2 was uploaded and the dashboard explicitly shows
+`0.3.2 · Draft`. A rescan failed with "The latest scan did not complete";
+authentication remains unavailable and no tools have been discovered.
+
 ## Remaining review work
 
-- Upload and verify v0.3.2, then complete OAuth through the provider's secure
+- Complete OAuth for the saved v0.3.2 through the provider's secure
   connection page with a dedicated synthetic-data mailbox and scan all tools.
 - Run the eight review cases in the intended host against the saved version.
 - Record and verify an actual walkthrough of the new follow-up workflow. The
