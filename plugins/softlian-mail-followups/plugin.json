@@ -1,6 +1,6 @@
 {
   "name": "softlian-mail-followups",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Turn business email into persistent follow-ups with due dates, source references, and completion tracking.",
   "author": {
     "name": "Ahmad Faghih",

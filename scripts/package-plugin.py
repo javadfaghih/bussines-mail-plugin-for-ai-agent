@@ -44,12 +44,14 @@ for key, minimum in (("logo", 256), ("composerIcon", 48)):
 mcp = json.loads((PLUGIN / "mcp.json").read_text())
 assert len(mcp["mcpServers"]) == 1
 server = mcp["mcpServers"][manifest["name"]]
-assert server["type"] == "streamable-http" and server["url"] == "https://mcp.softlian.com/mail"
+expected_url = "https://mcp.softlian.com/mail/followups" if manifest["name"] == "softlian-mail-followups" else "https://mcp.softlian.com/mail"
+assert server["type"] == "streamable-http" and server["url"] == expected_url
 auth = server.get("extensions", {}).get("com.openai", {}).get("auth")
 if auth is not None:
     assert auth["type"] == "oauth" and auth["client"]["mode"] == "dcr"
     assert "clientSecret" not in auth and "clientSecret" not in auth["client"]
-    assert auth["resource"] == server["url"]
+    # Both endpoint paths are protected by the same existing /mail audience.
+    assert auth["resource"] == "https://mcp.softlian.com/mail"
     assert auth["baseScopes"] == ["mail:read", "mail:send", "followups:write"]
     for key in ("authorizationServerBase", "authorizationUrl", "tokenUrl", "registrationUrl"):
         assert auth[key].startswith("https://mcp.softlian.com")
