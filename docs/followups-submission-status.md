@@ -1,11 +1,12 @@
-# Softlian Mail Follow-ups: new submission
+# Bussines Mail SMTP/IMAP: new submission
 
 The user explicitly requested a completely new plugin after the existing
-submission could not be updated. The original app was left intact.
+submission could not be updated. The original app was initially left intact;
+the user later reported deleting it to release its MCP URL.
 
 ## New identity and source
 
-- Display name: Softlian Mail Follow-ups.
+- Display name: Bussines Mail SMTP/IMAP (exact spelling requested by the user).
 - Package name: `softlian-mail-followups`.
 - Source: `plugins/softlian-mail-followups`.
 - Publisher: Business — Ahmad Faghih, Softlian Organization.
@@ -23,7 +24,7 @@ countries. No translation beyond the English base listing was provided.
 
 ## OAuth configuration update
 
-The source package is now v0.3.1 and explicitly declares OAuth under each MCP
+Starting with v0.3.1, the source package explicitly declares OAuth under each MCP
 server's `extensions.com.openai.auth`:
 
 - Dynamic Client Registration (`client.mode: dcr`).
@@ -81,16 +82,56 @@ v0.3.4 restores `https://mcp.softlian.com/mail` and applies that exact display
 name. The new app and package identity remain unchanged. The temporary alias
 was removed. No credentials or scopes changed.
 
+## Saved v0.3.4 and successful authorization
+
+Commit `d6f22d1` was pushed to main. GitHub checks and Cloudflare Workers Builds
+succeeded. v0.3.4 was uploaded and saved; the Metadata & Skills tab shows
+`0.3.4 · Draft`, the requested display name, and skill status `Checks passed`.
+
+The user explicitly approved connecting the dedicated reviewer mailbox to
+ChatGPT with `mail:read`, `mail:send`, and `followups:write`. Provider-side
+authorization completed successfully. Both the draft connection and the
+separate metadata-scan connection were completed. The dashboard now displays
+`MCP configuration Configured`, `Authentication Authorized`, `Domain verified`,
+and `No findings in the latest MCP scan`, with all eleven tools discovered.
+The scan connection had to be reauthorized after completing draft setup;
+the subsequent scan completed successfully. This supersedes the earlier
+authentication and scan blockers recorded above.
+
+Reviewer credentials and explicit sign-in instructions were saved only in the
+secure review-information drawer; the portal confirmed `Progress saved`.
+The instructions still truthfully say the synthetic INBOX fixture is pending.
+No password, token, or client secret is stored in this document or package.
+
+The submission dialog was inspected without accepting attestations or
+submitting. It reports blocking `Incomplete review information`. Supporting
+content explicitly reports a missing `review.demo_recording_url`. The retained
+requested spelling also produces a non-blocking name-spelling finding.
+
+An existing ChatGPT development connection to the same production `/mail`
+endpoint was located and its tools refreshed. This development connection has
+a different app ID from the public draft; it is not publication of v0.3.4.
+A read-only account-status rehearsal completed in ChatGPT with the refreshed
+`get_connection_status` tool. It identified an existing support mailbox with
+read/send permission and no follow-up write scope. No messages were read or
+searched and no tasks changed. This verifies the identity safeguard, not the
+five positive or three negative review cases.
+
+The user approved one exact synthetic self-email for the dedicated test mailbox
+with subject `Review fixture: delivery date`. It has not been sent. Adding the
+dedicated test account through ChatGPT's `Connect another account` reached the
+provider login page, then Chrome blocked automation because another extension
+UI was open. The user must dismiss that extension UI before browser work can
+continue. Existing support-account access was preserved.
+
 ## Remaining review work
 
-- Upload v0.3.4 and complete OAuth through the provider's secure
-  connection page with a dedicated synthetic-data mailbox and scan all tools.
+- Prepare the synthetic reviewer INBOX fixture, and select/verify the dedicated
+  test mailbox in the intended host before running mailbox-content cases.
 - Run the eight review cases in the intended host against the saved version.
 - Record and verify an actual walkthrough of the new follow-up workflow. The
   old mail-access recording is not evidence of the new workflow. The review
   drawer explicitly requires `review.demo_recording_url` in the ZIP.
-- Enter reviewer access only in secure dashboard fields; do not put credentials
-  in this source, the archive, or chat.
 - Complete applicable publisher facts and legal/policy attestations before the
   final authorized Submit for review action.
 
