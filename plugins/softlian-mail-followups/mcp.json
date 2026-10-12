@@ -2,7 +2,7 @@
   "mcpServers": {
     "softlian-mail-followups": {
       "type": "streamable-http",
-      "url": "https://mcp.softlian.com/mail/followups",
+      "url": "https://mcp.softlian.com/mail",
       "extensions": {
         "com.openai": {
           "auth": {

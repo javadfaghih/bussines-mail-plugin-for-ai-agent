@@ -1,6 +1,6 @@
 {
   "name": "softlian-mail-followups",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Turn business email into persistent follow-ups with due dates, source references, and completion tracking.",
   "author": {
     "name": "Ahmad Faghih",
@@ -21,7 +21,7 @@
   "extensions": {
     "com.openai": {
       "interface": {
-        "displayName": "Softlian Mail Follow-ups",
+        "displayName": "Bussines Mail SMTP/IMAP",
         "shortDescription": "Track work from your email",
         "longDescription": "Turn a business email into work you can resume in a later conversation. Find an inbox message, agree on a task and due date, and save it in a private follow-up queue. Review overdue, due, and upcoming work, reopen the original email through a verified inbox reference, reschedule it, or mark it done. Task records persist independently of the email provider.\n\nConnect a mailbox you control with IMAP over TLS on port 993 and SMTP over TLS on port 465 using the same app password. Read and search plain-text inbox messages, and send plain-text email only after approving the exact recipients, subject, and body. Passwords are entered only on the secure connection page.\n\nStores agreed task titles, dates, status, timestamps, and inbox references until you delete the task or remove the connection. Message bodies are fetched on demand and are not stored by this service. Up to 200 saved tasks per mailbox. Follow-ups do not run background scans, send automatic reminders, or provide notifications. INBOX only; attachments, HTML, provider OAuth, and STARTTLS are not supported.",
         "developerName": "Ahmad Faghih",

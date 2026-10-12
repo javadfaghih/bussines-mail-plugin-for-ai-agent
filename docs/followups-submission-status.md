@@ -68,19 +68,22 @@ both succeeded. v0.3.2 was uploaded and the dashboard explicitly shows
 `0.3.2 · Draft`. A rescan failed with "The latest scan did not complete";
 authentication remains unavailable and no tools have been discovered.
 
-## Unique submission endpoint
+## MCP URL collision and requested name
 
 The user's manual Connect attempt revealed the actual save error: the MCP URL
-was already used by another app in this organization. v0.3.3 uses the unique
-endpoint `https://mcp.softlian.com/mail/followups`. It is a protected descendant
-of the existing `/mail` OAuth resource; the canonical audience stays
-`https://mcp.softlian.com/mail`, preserving existing grants and discovery.
-The new path creates the MCP server with the Softlian Mail Follow-ups name.
-The original `/mail` endpoint is retained. No credentials or scopes changed.
+was already used by another app in this organization. v0.3.3 deployed a unique
+endpoint, but the dashboard rejected the ZIP because an existing app's MCP URL
+cannot change. v0.3.3 was not saved in OpenAI.
+
+The user then reported deleting the old app, explicitly requested reusing the
+original URL, and requested the display name `Bussines Mail SMTP/IMAP`.
+v0.3.4 restores `https://mcp.softlian.com/mail` and applies that exact display
+name. The new app and package identity remain unchanged. The temporary alias
+was removed. No credentials or scopes changed.
 
 ## Remaining review work
 
-- Upload v0.3.3 and complete OAuth through the provider's secure
+- Upload v0.3.4 and complete OAuth through the provider's secure
   connection page with a dedicated synthetic-data mailbox and scan all tools.
 - Run the eight review cases in the intended host against the saved version.
 - Record and verify an actual walkthrough of the new follow-up workflow. The
