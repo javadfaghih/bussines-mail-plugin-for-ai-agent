@@ -39,17 +39,33 @@ metadata URL and scopes. No passwords, access tokens, or client secrets are
 included in the ZIP.
 
 The initial v0.3.0 connection drawer showed Authorization unavailable and did
-not finish setup. The v0.3.1 upload is pending: the native macOS file chooser
-kept Open disabled, and automatic extension uploads need Chrome's Allow access
-to file URLs permission. The user approved temporary activation and later
-revocation. Browser automation then rejected navigation to `chrome://extensions`
-because only HTTP/HTTPS URLs are allowed, explicitly prohibiting workarounds.
-The user was asked to enable the permission manually; no automated permission
-change was made.
+not finish setup. After the user manually enabled Chrome's Allow access to file
+URLs permission, v0.3.1 uploaded successfully. Its saved connection settings
+match the explicit OAuth configuration above. Connect briefly saves the
+configuration, then returns to Authorization unavailable without opening an
+authorization page. This is a remaining blocker, not successful authorization.
+No automated extension-permission change was made. The temporary permission
+must be disabled manually after the last upload.
+
+## Reviewer-account diagnostics
+
+The user supplied a dedicated test account and authorized testing. Credentials
+were passed only through non-echoing process input; they are not included in
+source or the ZIP. IMAP and SMTP TCP connections succeed, but the direct TLS
+authentication diagnostic failed with connection/timeout errors. These failures
+do not establish an incorrect password or successful authentication. No email
+was sent and no inbox content was read.
+
+The v0.3.2 source adds `get_connection_status`, a read-only tool projecting only
+the saved mailbox email and granted permissions. It never returns credentials,
+provider hosts, or internal IDs and does not contact the provider. The skill
+requires comparing a named mailbox with this identity before reading mail.
+TypeScript checking and 26 automated tests passed; archive validation passed
+for seven files, eleven tools, and five positive/three negative cases.
 
 ## Remaining review work
 
-- Upload and verify v0.3.1, then complete OAuth through the provider's secure
+- Upload and verify v0.3.2, then complete OAuth through the provider's secure
   connection page with a dedicated synthetic-data mailbox and scan all tools.
 - Run the eight review cases in the intended host against the saved version.
 - Record and verify an actual walkthrough of the new follow-up workflow. The

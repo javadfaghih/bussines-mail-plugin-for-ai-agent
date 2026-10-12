@@ -1,6 +1,6 @@
 {
   "name": "softlian-mail-followups",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Turn business email into persistent follow-ups with due dates, source references, and completion tracking.",
   "author": {
     "name": "Ahmad Faghih",
@@ -54,8 +54,8 @@
             {
               "description": "Dedicated fixture mailbox: seed a plain-text INBOX message with subject Review fixture: delivery date. Connect with mail:read and followups:write. Use the actual returned identifiers. Repeat creation to verify idempotency.",
               "prompt": "Find the email titled Review fixture: delivery date and track Confirm delivery date, due 2026-10-15.",
-              "tools_triggered": "search_mail, create_mail_followup",
-              "expected_behavior": "Search by fixture subject; create with its actual uid and uidValidity, title Confirm delivery date, dueDate 2026-10-15. Return open status and task ID. A repeat returns created=false with the original values, without another task."
+              "tools_triggered": "get_connection_status, search_mail, create_mail_followup",
+              "expected_behavior": "Confirm the saved mailbox matches the reviewer account and permits reading and changing follow-ups. Search by fixture subject; create with its actual uid and uidValidity, title Confirm delivery date, dueDate 2026-10-15. Return open status and task ID. A repeat returns created=false with the original values, without another task."
             },
             {
               "description": "Run after creating the fixture follow-up. Start a new conversation connected to the same reviewer mailbox; do not rely on earlier chat history.",

@@ -8,6 +8,13 @@ description: Turn requested business email work into a persistent private follow
 Use this workflow when the user asks to track work from email or review saved
 email tasks. Only access mail or change tasks within the user's request.
 
+Before accessing a named mailbox, call `get_connection_status` and compare its
+saved email address with the user's requested account. Stop if they differ;
+ask the user to connect the intended account. The reported permissions describe
+the saved connection, not provider connectivity or successful authentication.
+Never request or display its password. A missing write permission requires
+reconnecting with `followups:write` before changing tasks.
+
 ## From an email to a task
 
 1. Find the requested email with `search_mail` or `list_mail`. Preserve both

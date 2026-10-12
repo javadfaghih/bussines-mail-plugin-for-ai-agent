@@ -58,7 +58,7 @@ assert legacy["mcpServers"][manifest["name"]]["url"] == server["url"]
 
 cases = extension["review"]["test_cases"]
 assert len(cases["positive"]) == 5 and len(cases["negative"]) == 3
-sources = (ROOT / "src/index.ts").read_text() + (ROOT / "src/followup-tools.ts").read_text()
+sources = (ROOT / "src/index.ts").read_text() + (ROOT / "src/followup-tools.ts").read_text() + (ROOT / "src/connection-status-tools.ts").read_text()
 tool_names = set(re.findall(r'registerTool\("([^"\n]+)"', sources))
 for case in cases["positive"]:
     assert all(isinstance(case[key], str) and case[key].strip()
